@@ -48,6 +48,14 @@ extern YYSTYPE cool_yylval;
 /*
  * Define names for regular expressions here.
  */
+INTEGER  [0-9]+
+IDENTIFIER [a-z][a-zA-Z0-9_]*
+TYPE_IDENTIFIER [A-Z][a-zA-Z0-9_]*
+SELF_IDENTIFIER "self"
+SELF_TYPE_IDENTIFIER "SELF_TYPE"
+STRING ["][^\0]*["]
+COMMENT (--.\n)|("(*"."*)")
+KEYWORD class|else|false|fi|if|in|inherits|isvoid|let|loop|pool|then|while|case|esac|new|of|not|true
 
 DARROW          =>
 
