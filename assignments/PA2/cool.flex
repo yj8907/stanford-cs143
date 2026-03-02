@@ -45,7 +45,6 @@ extern YYSTYPE cool_yylval;
  */
 %}
 
-%option yylineno
 %x COMMENT STR
 
 /*
@@ -195,11 +194,6 @@ cool_yylval.symbol = stringtable.add_string(yytext);
 return LE;
 }
 
-[{}] {
-cool_yylval.symbol = stringtable.add_string(yytext);
-return STR_CONST;
-}
-
  /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for 
@@ -212,24 +206,11 @@ return STR_CONST;
   BEGIN(STR);
   }
 <STR>\\[btnf] { 
-  switch (yytext[1]) {
-    case 'b': 
-      *string_buf_ptr++ = '\b';
-      break;
-    case 't':
-      *string_buf_ptr++ = '\t';
-      break;
-    case 'n':
-      *string_buf_ptr++ = '\n';
-      break;
-    case 'f':
-      *string_buf_ptr++ = '\f';
-      break;
-    default:
-      break;  
-  }
+  for (int i=0; i<yyleng; i++){
+      *string_buf_ptr++ = yytext[i];
+    }
 }
-<STR>\\[^\0\nbtnf] {
+<STR>\\[^btnf] {
     *string_buf_ptr++ = yytext[1];
   }
 <STR>\\[\n] {
@@ -237,7 +218,7 @@ return STR_CONST;
       *string_buf_ptr++ = yytext[i];
     }
 }
-<STR>[^\0\n\\]+ {
+<STR>[^\"]+ {
     for (int i=0; i<yyleng; i++){
       *string_buf_ptr++ = yytext[i];
     }
@@ -263,7 +244,9 @@ return STR_CONST;
 {DARROW}		{ return DARROW; }
 {COMMENTS};
 
-{WHITESPACE} {} 
+{WHITESPACE} {
+  if (yytext[0] == '\n') curr_lineno++;
+} 
 
   /* comments 
   */
@@ -280,6 +263,11 @@ return STR_CONST;
   if (left_bracket_count == 0) BEGIN(INITIAL);
 }
 <COMMENT>.|\n {
+}
+
+. {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return STR_CONST;
 }
 
 %%
