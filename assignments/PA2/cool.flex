@@ -33,6 +33,7 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
+int left_bracket_count = 0;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -42,22 +43,42 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
-
 %}
+
+%option yylineno
+%x COMMENT STR
 
 /*
  * Define names for regular expressions here.
  */
 INTEGER  [0-9]+
-IDENTIFIER [a-z][a-zA-Z0-9_]*
-TYPE_IDENTIFIER [A-Z][a-zA-Z0-9_]*
-SELF_IDENTIFIER "self"
-SELF_TYPE_IDENTIFIER "SELF_TYPE"
-STRING ["][^\0]*["]
-COMMENT (--.\n)|("(*"."*)")
-KEYWORD class|else|false|fi|if|in|inherits|isvoid|let|loop|pool|then|while|case|esac|new|of|not|true
+CLASS (?i:CLASS)
+ELSE (?i:ELSE)
+FI (?i:FI)
+IN (?i:IN)
+INHERITS (?i:INHERITS)
+LET (?i:LET)
+LOOP (?i:LOOP)
+POOL (?i:POOL)
+THEN (?i:THEN)
+WHILE (?i:WHILE)
+CASE (?i:CASE)
+ESAC (?i:ESAC)
+OF (?i:OF)
+NEW (?i:NEW)
+ISVOID (?i:ISVOID)
+NOT (?i:NOT)
+TRUE (true)
+FALSE (false)
+SELF_IDENTIFIER (?i:self)
+SELF_TYPE_IDENTIFIER (?i:SELF_TYPE) 
 
-DARROW          =>
+OBJECT_IDENTIFIER [a-z][a-zA-Z0-9_]*
+TYPE_IDENTIFIER [A-Z][a-zA-Z0-9_]*
+COMMENTS (--.*\n)
+
+DARROW =>
+WHITESPACE [ \n\f\r\t\v]+
 
 %%
 
@@ -65,17 +86,119 @@ DARROW          =>
   *  Nested comments
   */
 
-
- /*
-  *  The multiple-character operators.
-  */
-{DARROW}		{ return (DARROW); }
-
- /*
+  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
+{INTEGER} {
+cool_yylval.symbol = inttable.add_string(yytext);
+return INT_CONST;
+}
 
+{CLASS} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return CLASS;
+}
+
+{ELSE} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return ELSE;
+}
+
+{FI} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return FI;
+}
+
+{IN} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return IN;
+}
+
+{INHERITS} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return INHERITS;
+}
+
+{LET} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return LET;
+}
+
+{LOOP} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return LOOP;
+}
+
+{POOL} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return POOL;
+}
+
+{THEN} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return THEN;
+}
+
+{WHILE} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return WHILE;
+}
+
+{CASE} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return CASE;
+}
+
+{ESAC} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return ESAC;
+}
+
+{OF} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return OF;
+}
+
+{NEW} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return NEW;
+}
+
+{ISVOID} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return ISVOID;
+}
+
+{NOT} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return NOT;
+}
+
+{TRUE} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return BOOL_CONST;
+}
+
+{FALSE} {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return BOOL_CONST;
+}
+
+"<-" {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return ASSIGN;
+}
+
+"<=" {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return LE;
+}
+
+[{}] {
+cool_yylval.symbol = stringtable.add_string(yytext);
+return STR_CONST;
+}
 
  /*
   *  String constants (C syntax)
@@ -83,6 +206,82 @@ DARROW          =>
   *  \n \t \b \f, the result is c.
   *
   */
+ 
+\" { 
+  string_buf_ptr = string_buf;
+  BEGIN(STR);
+  }
+<STR>\\[btnf] { 
+  switch (yytext[1]) {
+    case 'b': 
+      *string_buf_ptr++ = '\b';
+      break;
+    case 't':
+      *string_buf_ptr++ = '\t';
+      break;
+    case 'n':
+      *string_buf_ptr++ = '\n';
+      break;
+    case 'f':
+      *string_buf_ptr++ = '\f';
+      break;
+    default:
+      break;  
+  }
+}
+<STR>\\[^\0\nbtnf] {
+    *string_buf_ptr++ = yytext[1];
+  }
+<STR>\\[\n] {
+  for (int i=0; i<yyleng; i++){
+      *string_buf_ptr++ = yytext[i];
+    }
+}
+<STR>[^\0\n\\]+ {
+    for (int i=0; i<yyleng; i++){
+      *string_buf_ptr++ = yytext[i];
+    }
+  }
+<STR>\" {
+  *string_buf_ptr = '\0';
+  cool_yylval.symbol = stringtable.add_string(string_buf);
+  BEGIN(INITIAL);
+  return STR_CONST;
+}
 
+ /*
+  *  The multiple-character operators.
+  */
+{OBJECT_IDENTIFIER} {
+  cool_yylval.symbol = inttable.add_string(yytext);
+  return OBJECTID;
+}
+{TYPE_IDENTIFIER} {
+  cool_yylval.symbol = inttable.add_string(yytext);
+  return TYPEID;
+}
+{DARROW}		{ return DARROW; }
+{COMMENTS};
+
+{WHITESPACE} {} 
+
+  /* comments 
+  */
+
+"(*" {
+  left_bracket_count += 1;
+  BEGIN(COMMENT);
+}
+<COMMENT>"(*" {
+  left_bracket_count += 1;
+}
+<COMMENT>"*)" {
+  left_bracket_count -= 1;
+  if (left_bracket_count == 0) BEGIN(INITIAL);
+}
+<COMMENT>.|\n {
+}
 
 %%
+
+
