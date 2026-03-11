@@ -33,6 +33,7 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
+bool invalid_str;
 int left_bracket_count = 0;
 
 extern int curr_lineno;
@@ -75,6 +76,7 @@ SELF_TYPE_IDENTIFIER (?i:SELF_TYPE)
 OBJECT_IDENTIFIER [a-z][a-zA-Z0-9_]*
 TYPE_IDENTIFIER [A-Z][a-zA-Z0-9_]*
 COMMENTS (--.*\n)
+SYMBOLS [\[\]\{\}\(\)\:\+\;\+\-\*\/\~\<\>\=\.@\,\']
 
 DARROW =>
 WHITESPACE [ \n\f\r\t\v]+
@@ -207,26 +209,44 @@ return LE;
   }
 <STR>\\[btnf] { 
   for (int i=0; i<yyleng; i++){
+      if (invalid_str || string_buf_ptr - string_buf == MAX_STR_CONST) break;
+      *string_buf_ptr++ = yytext[i];
+  }
+}
+<STR>\\[\n] {
+  for (int i=0; i<yyleng; i++){
+      if (invalid_str || string_buf_ptr - string_buf == MAX_STR_CONST) break;
       *string_buf_ptr++ = yytext[i];
     }
 }
 <STR>\\[^btnf] {
-    *string_buf_ptr++ = yytext[1];
-  }
-<STR>\\[\n] {
-  for (int i=0; i<yyleng; i++){
-      *string_buf_ptr++ = yytext[i];
-    }
+    if (!(invalid_str || string_buf_ptr - string_buf == MAX_STR_CONST)) 
+      *string_buf_ptr++ = yytext[1];
 }
-<STR>[^\"]+ {
-    for (int i=0; i<yyleng; i++){
-      *string_buf_ptr++ = yytext[i];
-    }
+<STR>[^\"\0\n] {
+    if (!(invalid_str || string_buf_ptr - string_buf == MAX_STR_CONST)) 
+      *string_buf_ptr++ = yytext[0];
   }
+<STR>\0 {
+  invalid_str = true;
+}
+<STR>\n {
+  cool_yylval.error_msg = "Unterminated string constant";
+  BEGIN(INITIAL);
+  return ERROR;
+}
 <STR>\" {
+  BEGIN(INITIAL);
+  if (string_buf_ptr - string_buf == MAX_STR_CONST) {
+    cool_yylval.error_msg = "String constant too long";
+    return ERROR;
+  }
+  if (invalid_str) {
+    cool_yylval.error_msg = "String contains null character";
+    return ERROR;
+  }
   *string_buf_ptr = '\0';
   cool_yylval.symbol = stringtable.add_string(string_buf);
-  BEGIN(INITIAL);
   return STR_CONST;
 }
 
@@ -264,10 +284,19 @@ return LE;
 }
 <COMMENT>.|\n {
 }
+"*)" {
+  cool_yylval.error_msg = "Unmatched *)";
+  return ERROR;
+}
 
-. {
+{SYMBOLS} {
 cool_yylval.symbol = stringtable.add_string(yytext);
 return STR_CONST;
+}
+
+. {
+cool_yylval.error_msg = "Unmatched Char";
+return ERROR;
 }
 
 %%
