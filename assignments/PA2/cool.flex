@@ -177,12 +177,12 @@ return NOT;
 }
 
 {TRUE} {
-cool_yylval.symbol = stringtable.add_string(yytext);
+cool_yylval.boolean = 1;
 return BOOL_CONST;
 }
 
 {FALSE} {
-cool_yylval.symbol = stringtable.add_string(yytext);
+cool_yylval.boolean = 0;
 return BOOL_CONST;
 }
 
