@@ -1,4 +1,6 @@
 
+FLEX_PREFIX := $(shell brew --prefix flex)
+
 ASSN = 2
 CLASS= cs143
 CLASSDIR= ../..
@@ -16,7 +18,7 @@ LSRC= Makefile
 OBJS= ${CFIL:.cc=.o}
 OUTPUT= test.output
 
-CPPINCLUDE= -I. -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
+CPPINCLUDE= -I. -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN} -I$(FLEX_PREFIX)/include
 
 
 FFLAGS= -d -ocool-lex.cc
@@ -36,7 +38,7 @@ ${OUTPUT}:	lexer test.cl
 	-./lexer test.cl >test.output 2>&1 
 
 lexer: ${OBJS}
-	${CC} ${CFLAGS} ${OBJS} ${LIB} -o lexer
+	${CC} ${CFLAGS} ${OBJS} -L$(FLEX_PREFIX)/lib ${LIB} -o lexer
 
 .cc.o:
 	${CC} ${CFLAGS} -c $<

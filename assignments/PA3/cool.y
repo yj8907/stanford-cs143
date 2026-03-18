@@ -51,7 +51,7 @@
       // Set the line number of the current non-terminal:
       // ***********************************************
       // You can access the line numbers of the i'th item with @i, just
-      // like you acess the value of the i'th exporession with $i.
+      // like you acess the value of the i'th expression with $i.
       //
       // Here, we choose the line number of the last INT_CONST (@3) as the
       // line number of the resulting expression (@$). You are free to pick
@@ -135,11 +135,18 @@
     %type <class_> class
     
     /* You will want to change the following line. */
-    %type <features> dummy_feature_list
-    
+    %type <features> dummy_feature_list features_list
+    %type <feature> feature
+    %type <formals> dummy_formal_list formal_list
+    %type <formal> formal
+    %type <expression> expression let_bindings
+    %type <expressions> expression_list_args expression_list_body dummy_expression_list
+    %type <case_> case
+    %type <cases> case_list dummy_case_list
+
     /* Precedence declarations go here. */
     
-    
+
     %%
     /* 
     Save the root of the abstract syntax tree in a global variable.
@@ -157,18 +164,140 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
+    class	: CLASS TYPEID '{' features_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+    | CLASS TYPEID INHERITS TYPEID '{' features_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
+    dummy_feature_list :	/* empty */
     {  $$ = nil_Features(); }
+    ;
+
+    features_list : 
+    dummy_feature_list		/* empty */
+    {  $$ = $1; }
+    | features_list feature ';'
+    { $$ = append_Features($1, single_Features($2)); }
+    ;
     
+    feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
+    { $$ = method($1, $3, $6, $8); }
+    | OBJECTID ':' TYPEID
+    { $$ = attr($1, $3, no_expr()); }
+    | OBJECTID ':' TYPEID ASSIGN expression
+    { $$ = attr($1, $3, $5); }
+    ;
+
+    dummy_formal_list:  /* empty */
+    {  $$ = nil_Formals(); }
+    ;
+
+    formal_list : 
+    formal dummy_formal_list 
+    { $$ = single_Formals($1); }
+    | formal ',' formal_list
+    { $$ = append_Formals(single_Formals($1), $3); }
+    ;
+
+    formal: OBJECTID ':' TYPEID
+    { $$ = formal($1, $3); }
+    ;
     
+    dummy_case_list: 
+    { $$ = nil_Cases(); }
+    ;
+
+    case_list: 
+    case ';' case_list
+    { $$ = append_Cases($3, single_Cases($1)); }
+    | dummy_case_list
+    { $$ = $1; }
+    ;
+
+    case: OBJECTID ':' TYPEID DARROW expression
+    { $$ = branch($1, $3, $5); }
+    ;
+
+    let_bindings: OBJECTID ':' TYPEID ASSIGN expression IN expression
+    { $$ = let($1, $3, $5, $7); }
+    | OBJECTID ':' TYPEID IN expression
+    { $$ = let($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ',' let_bindings
+    { $$ = let($1, $3, no_expr(), $5); } 
+    | OBJECTID ':' TYPEID ASSIGN expression ',' let_bindings
+    { $$ = let($1, $3, $5, $7); } 
+    ;
+
+    expression_list_body: 
+    expression ';'
+    { $$ = single_Expressions($1); }
+    | expression ';' expression_list_body
+    { $$ = append_Expressions($3, single_Expressions($1)); }
+
+    expression_list_args: 
+    expression dummy_expression_list
+    { $$ = append_Expressions($2, single_Expressions($1)); }
+    | expression ',' expression_list_args
+    { $$ = append_Expressions($3, single_Expressions($1)); }
+    ;
+
+    dummy_expression_list: 
+    { $$ = nil_Expressions(); }
+    ;
+
+    expression: OBJECTID ASSIGN expression
+    { $$ = assign($1, $3); }
+    | expression '@' TYPEID '.' OBJECTID '(' expression_list_args ')'
+    { $$ = static_dispatch($1, $3, $5, $7); }
+    | expression '.' OBJECTID '(' expression_list_args ')'
+    { $$ = dispatch($1, $3, $5); }
+    | IF expression THEN expression ELSE expression FI
+    { $$ = cond($2, $4, $6); }
+    | WHILE expression LOOP expression POOL
+    { $$ = loop($2, $4); }
+    | '{' expression_list_body '}'
+    { $$ = block($2); }
+    | LET let_bindings
+    { $$ = $2; }
+    | CASE expression OF case_list ESAC
+    { $$ = typcase($2, $4); }
+    | NEW TYPEID
+    { $$ = new_($2); }
+    | ISVOID expression
+    { $$ = isvoid($2); }
+    | expression '+' expression
+    { $$ = plus($1, $3); }
+    | expression '-' expression
+    { $$ = sub($1, $3); }
+    | expression '*' expression
+    { $$ = mul($1, $3); }
+    | expression '/' expression
+    { $$ = divide($1, $3); }
+    | '~' expression
+    { $$ = neg($2); }
+    | expression '<' expression
+    { $$ = lt($1, $3); }
+    | expression LE expression
+    { $$ = leq($1, $3); }
+    | expression '=' expression
+    { $$ = eq($1, $3); }
+    | NOT expression
+    { $$ = neg($2); }
+    | '(' expression ')'
+    { $$ = $2; }
+    | OBJECTID
+    { $$ = object($1); }
+    | INT_CONST
+    { $$ = int_const($1); }
+    | STR_CONST
+    { $$ = string_const($1); }
+    | BOOL_CONST 
+    { $$ = bool_const($1); }
+    ;
+
     /* end of grammar */
     %%
     
