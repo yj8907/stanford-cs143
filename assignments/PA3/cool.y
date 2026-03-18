@@ -185,6 +185,8 @@
     
     feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
     { $$ = method($1, $3, $6, $8); }
+    | OBJECTID '(' ')' ':' TYPEID '{' expression '}'
+    { $$ = method($1, nil_Formals(), $5, $7); } 
     | OBJECTID ':' TYPEID
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expression
@@ -252,8 +254,12 @@
     { $$ = assign($1, $3); }
     | expression '@' TYPEID '.' OBJECTID '(' expression_list_args ')'
     { $$ = static_dispatch($1, $3, $5, $7); }
+    | expression '@' TYPEID '.' OBJECTID '(' ')'
+    { $$ = static_dispatch($1, $3, $5, nil_Expressions()); }
     | expression '.' OBJECTID '(' expression_list_args ')'
     { $$ = dispatch($1, $3, $5); }
+    | expression '.' OBJECTID '(' ')'
+    { $$ = dispatch($1, $3, nil_Expressions()); }
     | IF expression THEN expression ELSE expression FI
     { $$ = cond($2, $4, $6); }
     | WHILE expression LOOP expression POOL
