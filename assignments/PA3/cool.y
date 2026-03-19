@@ -177,6 +177,8 @@
     stringtable.add_string(curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' features_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+    | CLASS error '{' error '}' ';'
+    { yyerrok; $$ = NULL; }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -189,6 +191,8 @@
     {  $$ = $1; }
     | features_list feature ';'
     { $$ = append_Features($1, single_Features($2)); }
+    | error ';' features_list
+    { yyerrok; $$ = NULL; }
     ;
     
     feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
