@@ -23,7 +23,13 @@ class ClassTable {
 private:
   int semant_errors;
   void install_basic_classes();
+  bool check_dependency() {}
+  bool check_parent(Symbol) {}
+
   ostream& error_stream;
+  SymbolTable<Symbol, class__class> class_table;
+  SymbolTable<Symbol, int> class_inheritance_check_table;
+  Classes classes;
 
 public:
   ClassTable(Classes);
