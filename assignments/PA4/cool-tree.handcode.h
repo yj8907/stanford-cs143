@@ -44,6 +44,8 @@ typedef Expressions_class *Expressions;
 typedef list_node<Case> Cases_class;
 typedef Cases_class *Cases;
 
+typedef list_node<Symbol> Signature;
+
 #define Program_EXTRAS                          \
 virtual void semant() = 0;			\
 virtual void dump_with_types(ostream&, int) = 0; 
@@ -52,16 +54,11 @@ virtual void dump_with_types(ostream&, int) = 0;
 
 #define program_EXTRAS                          \
 void semant();     				\
-void typecheck();				\
 void dump_with_types(ostream&, int);         \
-void symtab_visit_class(Class_);    		\
-void symtab_visit_expr(Expression);			\
-void symtab_visit_case(Case);
-
 
 #define Class__EXTRAS                   \
 virtual Symbol get_filename() = 0;      \
-virtual void dump_with_types(ostream&,int) = 0;  
+virtual void dump_with_types(ostream&,int) = 0;  	
 
 
 #define class__EXTRAS                                 \
@@ -74,7 +71,7 @@ Class_ parent_class;
 
 
 #define Feature_EXTRAS                                        \
-virtual void dump_with_types(ostream&,int) = 0; 
+virtual void dump_with_types(ostream&,int) = 0; 			
 
 
 #define Feature_SHARED_EXTRAS                                       \
@@ -83,7 +80,9 @@ void dump_with_types(ostream&,int);
 
 #define method_EXTRAS 									\
 Formals get_formals();									\
-Expression get_expr();
+Symbol get_name();							\
+Signature* get_signature();					\
+Expression get_expr();						
 
 #define attr_EXTRAS 									\
 Symbol get_name();									\
@@ -112,18 +111,18 @@ void dump_with_types(ostream& ,int);
 #define Expression_EXTRAS                    \
 Symbol type;                                 \
 Symbol get_type() { return type; }           \
-Expression set_type(Symbol s) { type = s; return this; } \
+Expression set_type(Symbol s) { type = s; return this; } 		\
 virtual void dump_with_types(ostream&,int) = 0;  \
-void dump_type(ostream&, int);               \
-void check_type(); 							\
+void dump_type(ostream&, int);               	\
 Expression_class() { type = (Symbol) NULL; }
 
 #define Expression_SHARED_EXTRAS           \
 void dump_with_types(ostream&,int); 		\
-virtual Expression get_expr() = 0;
+virtual Expression get_expr() = 0;			
 
 #define static_dispatch_EXTRAS 				\
-Expressions get_actual();
+Expressions get_actual();					\
+Symbol get_name();
 
 #define dispatch_EXTRAS 				\
 Expressions get_actual();
